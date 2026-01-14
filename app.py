@@ -88,7 +88,7 @@ def extract_event_info(text):
         return None
 
 # ===========================
-# 6. 按钮点击逻辑 (含时区和警告修复)
+# 6. 按钮点击逻辑 (时区终极修正版)
 # ===========================
 if st.button("✨ 生成日历文件"):
     if not text_input:
@@ -99,9 +99,6 @@ if st.button("✨ 生成日历文件"):
             
             if event_data:
                 st.success("提取成功！")
-                
-                # 定义北京时区
-                beijing_tz = datetime.timezone(datetime.timedelta(hours=8))
                 
                 # 展示信息
                 col1, col2 = st.columns(2)
@@ -117,23 +114,37 @@ if st.button("✨ 生成日历文件"):
                     e = Event()
                     e.name = event_data.get('title', 'New Event')
                     
-                    # 时间处理：强制加上北京时区
+                    # === ⏰ 时区处理核心逻辑 ===
+                    # 目标：把 "2026-01-15 10:00:00" (北京) -> 转换成 -> "2026-01-15 02:00:00" (UTC)
+                    
+                    # 定义时区
+                    tz_beijing = datetime.timezone(datetime.timedelta(hours=8)) # 北京是 UTC+8
+                    tz_utc = datetime.timezone.utc # 世界标准时间
+
                     start_str = event_data.get('start_time')
                     end_str = event_data.get('end_time')
 
+                    # 处理开始时间
                     if start_str:
                         try:
-                            dt_start = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S")
-                            dt_start = dt_start.replace(tzinfo=beijing_tz)
-                            e.begin = dt_start
+                            # 1. 把字符串变成时间对象 (默认为“无时区身份”)
+                            dt = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+                            # 2. 给它发身份证：你是“北京时间”
+                            dt = dt.replace(tzinfo=tz_beijing)
+                            # 3. 换算成“世界时间” (关键一步！这里会自动减8小时)
+                            dt_utc = dt.astimezone(tz_utc)
+                            e.begin = dt_utc
                         except ValueError:
-                            e.begin = start_str + "+08:00"
+                            # 兜底：如果格式不对，直接存字符串，交给手机自己猜
+                            e.begin = start_str
 
+                    # 处理结束时间
                     if end_str:
                         try:
-                            dt_end = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S")
-                            dt_end = dt_end.replace(tzinfo=beijing_tz)
-                            e.end = dt_end
+                            dt = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S")
+                            dt = dt.replace(tzinfo=tz_beijing)
+                            dt_utc = dt.astimezone(tz_utc)
+                            e.end = dt_utc
                         except:
                             pass 
 
@@ -142,7 +153,6 @@ if st.button("✨ 生成日历文件"):
                     
                     c.events.add(e)
 
-                    # 修复了 str(c) 的警告，改用 c.serialize()
                     st.download_button(
                         label="📥 点击下载 .ics 文件",
                         data=c.serialize(),
