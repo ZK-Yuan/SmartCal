@@ -7,16 +7,24 @@ import re
 
 # ===========================
 # 1. 配置区域
+st.set_page_config(page_title="SmartCal 📅", page_icon="📅")
 # ===========================
 # 你的 API Key
-API_KEY = "1f3c633f-99cb-406d-b177-dfd3cc9bd84c" 
+try:
+    # 优先读取 Secrets，如果读不到（比如本地运行），可以给个空值或者抛错
+    # 注意：Secrets 的 Key 是区分大小写的，确保网页填的和这里写的一模一样
+    if "VOLC_KEY" in st.secrets:
+        API_KEY = st.secrets["VOLC_KEY"]
+    else:
+        st.error("未找到密钥，请在 Streamlit Secrets 中配置 VOLC_KEY")
+        st.stop()
+except FileNotFoundError:
+    st.error("未找到 secrets.toml 文件")
+    st.stop()
 
-# 你的推理接入点 ID (Endpoint ID)
-MODEL_ID = "ep-20260114192542-x5zx6"
-
-# 初始化客户端 (火山引擎兼容 OpenAI SDK)
 client = OpenAI(
     api_key=API_KEY,
+    MODEL_ID = "ep-20260114192542-x5zx6"
     base_url="https://ark.cn-beijing.volces.com/api/v3"
 )
 
